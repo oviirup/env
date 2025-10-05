@@ -1,6 +1,6 @@
 import * as pi from "picocolors";
-import { object } from "zod";
-import type { TypeOf, ZodError, ZodObject, ZodType } from "zod";
+import { object, z } from "zod";
+import type { ZodError, ZodObject, ZodType } from "zod";
 
 const CLIENT_PREFIX = "NEXT_PUBLIC_" as const;
 
@@ -142,18 +142,22 @@ export type CreateEnv<
   TExtends extends TExtendsFormat,
 > = Readonly<
   Simplify<
-    TypeOf<ZodObject<TServer>> &
-      TypeOf<ZodObject<TClient>> &
-      TypeOf<ZodObject<TShared>> &
+    z.output<ZodObject<TServer>> &
+      z.output<ZodObject<TClient>> &
+      z.output<ZodObject<TShared>> &
       Mutable<Reduce<TExtends>>
   >
 >;
 
 function displayError(error: ZodError) {
-  console.error(` ${pi.red("×")} Invalid environment variables:`);
-  Object.entries(error.flatten().fieldErrors).forEach(([key, errorList]) => {
-    const errorText = errorList?.map((e) => pi.dim(e)).join(", ");
-    console.error(`    - ${key}: ${errorText}`);
+  console.error(`${pi.red("\u00D7")} Invalid environment variables:`);
+  const errorList = error.issues;
+  const errorCount = errorList.length;
+  errorList.forEach((err, i) => {
+    const key = err.path[0].toString();
+    const message = err.message || "Invalid value";
+    const prefix = i === errorCount - 1 ? "└──" : "├──";
+    console.error(`${prefix} ${key}: ${message}`);
   });
 }
 
@@ -170,7 +174,7 @@ export function envalid<
   // remove empty strings from runtime env
   for (const [key, value] of Object.entries(runtimeEnv)) {
     if (value && value === "") {
-      // @ts-ignore
+      // @ts-expect-error unnecessarily cautious
       delete runtimeEnv[key];
     }
   }
@@ -188,8 +192,8 @@ export function envalid<
   const isServer =
     opts.isServer ?? (typeof window === "undefined" || "Deno" in window);
 
-  const allClient = client.merge(shared);
-  const allServer = server.merge(shared).merge(client);
+  const allClient = client.extend(shared);
+  const allServer = server.extend(shared).extend(client);
   const parsed = isServer
     ? allServer.safeParse(runtimeEnv) // on server we can validate all env vars
     : allClient.safeParse(runtimeEnv); // on client we can only validate the ones that are exposed
@@ -225,7 +229,6 @@ export function envalid<
 
   const extendedObj = (opts.extends ?? []).reduce((acc, curr) => {
     return Object.assign(acc, curr);
-    // @ts-ignore
   }, {});
   const fullObj = Object.assign(parsed.data, extendedObj);
 
