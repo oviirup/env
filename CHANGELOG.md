@@ -1,5 +1,11 @@
 # @oviirup/envalid
 
+## 0.2.0
+
+### Minor Changes
+
+- [`10c30df`](https://github.com/oviirup/envalid/commit/10c30df4eb25df453f758aed73ce6ee21489deba) Thanks [@oviirup](https://github.com/oviirup)! - 📦 using zod v4
+
 ## 0.1.3
 
 ### Patch Changes
