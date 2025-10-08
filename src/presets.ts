@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { envalid } from "./index";
 
+// cspell:disable
+
 /**
  * Vercel System Environment Variables
  *
@@ -33,4 +35,93 @@ export const vercel = () =>
     },
     // @ts-expect-error unnecessarily cautious
     runtimeEnv: process.env,
+  });
+
+/**
+ * Neon for Vercel Environment Variables
+ *
+ * @see https://neon.tech/docs/guides/vercel-native-integration#environment-variables-set-by-the-integration
+ */
+export const neonVercel = () =>
+  envalid({
+    server: {
+      DATABASE_URL: z.string(),
+      DATABASE_URL_UNPOOLED: z.string().optional(),
+      PGHOST: z.string().optional(),
+      PGHOST_UNPOOLED: z.string().optional(),
+      PGUSER: z.string().optional(),
+      PGDATABASE: z.string().optional(),
+      PGPASSWORD: z.string().optional(),
+      POSTGRES_URL: z.url().optional(),
+      POSTGRES_URL_NON_POOLING: z.url().optional(),
+      POSTGRES_USER: z.string().optional(),
+      POSTGRES_HOST: z.string().optional(),
+      POSTGRES_PASSWORD: z.string().optional(),
+      POSTGRES_DATABASE: z.string().optional(),
+      POSTGRES_URL_NO_SSL: z.url().optional(),
+      POSTGRES_PRISMA_URL: z.url().optional(),
+    },
+    // @ts-expect-error unnecessarily cautious
+    runtimeEnv: process.env,
+  });
+
+/**
+ * Supabase for Vercel Environment Variables
+ *
+ * @see https://vercel.com/marketplace/supabase
+ */
+export const supabaseVercel = () =>
+  envalid({
+    server: {
+      POSTGRES_URL: z.url(),
+      POSTGRES_PRISMA_URL: z.url().optional(),
+      POSTGRES_URL_NON_POOLING: z.url().optional(),
+      POSTGRES_USER: z.string().optional(),
+      POSTGRES_HOST: z.string().optional(),
+      POSTGRES_PASSWORD: z.string().optional(),
+      POSTGRES_DATABASE: z.string().optional(),
+      SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+      SUPABASE_ANON_KEY: z.string().optional(),
+      SUPABASE_URL: z.url().optional(),
+      SUPABASE_JWT_SECRET: z.string().optional(),
+    },
+    client: {
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
+      NEXT_PUBLIC_SUPABASE_URL: z.url().optional(),
+    },
+    // @ts-expect-error unnecessarily cautious
+    runtimeEnv: process.env,
+  });
+
+/**
+ * Upstash redis Environment Variables
+ *
+ * @see https://upstash.com/docs/redis/howto/connectwithupstashredis
+ */
+export const upstashRedis = () =>
+  envalid({
+    server: {
+      UPSTASH_REDIS_REST_URL: z.string().url(),
+      UPSTASH_REDIS_REST_TOKEN: z.string(),
+    },
+    // @ts-expect-error unnecessarily cautious
+    runtimeEnv: process.env,
+  });
+
+/**
+ * Vite Environment Variables
+ *
+ * @see https://vite.dev/guide/env-and-mode
+ */
+export const vite = () =>
+  envalid({
+    server: {
+      BASE_URL: z.string(),
+      MODE: z.string(),
+      DEV: z.boolean(),
+      PROD: z.boolean(),
+      SSR: z.boolean(),
+    },
+    // @ts-expect-error unnecessarily cautious
+    runtimeEnv: import.meta.env,
   });
