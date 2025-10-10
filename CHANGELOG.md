@@ -1,5 +1,11 @@
 # @oviirup/envalid
 
+## 0.2.1
+
+### Patch Changes
+
+- [`eb7f023`](https://github.com/oviirup/envalid/commit/eb7f02385891e95cae58b01eb50811ccc4009ec7) Thanks [@oviirup](https://github.com/oviirup)! - 🐛 fix improper schema extend
+
 ## 0.2.0
 
 ### Minor Changes
