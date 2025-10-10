@@ -192,8 +192,8 @@ export function envalid<
   const isServer =
     opts.isServer ?? (typeof window === "undefined" || "Deno" in window);
 
-  const allClient = client.extend(shared);
-  const allServer = server.extend(shared).extend(client);
+  const allClient = client.extend(shared.shape);
+  const allServer = server.extend(shared.shape).extend(client.shape);
   const parsed = isServer
     ? allServer.safeParse(runtimeEnv) // on server we can validate all env vars
     : allClient.safeParse(runtimeEnv); // on client we can only validate the ones that are exposed
