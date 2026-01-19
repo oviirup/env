@@ -1,7 +1,16 @@
 # repository
 node_modules
+build
 dist
 
 # debug
 *-debug.log*
 *-error.log*
+
+# local env files
+.env*
+!.env.example
+
+# miscellaneous
+*.tsbuildinfo
+*.tgz

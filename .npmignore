@@ -1,6 +1,3 @@
-.changeset
-.github
-.husky
-.prettierrc
-src
-!dist
+# ignore all files except dist folder
+**/*
+!dist/**/*

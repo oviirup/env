@@ -2,48 +2,41 @@
   "name": "@oviirup/envalid",
   "version": "0.2.1",
   "description": "Validate environment variables with zod in Next.JS",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/oviirup/envalid"
-  },
-  "author": "Avirup Ghosh",
+  "repository": "https://github.com/oviirup/envalid",
   "license": "MIT",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "author": "Avirup Ghosh (github.com/oviirup)",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js",
-      "import": "./dist/index.mjs"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     },
     "./presets": {
       "types": "./dist/presets.d.ts",
-      "default": "./dist/presets.js",
-      "import": "./dist/presets.mjs"
+      "import": "./dist/presets.mjs",
+      "require": "./dist/presets.js"
     }
   },
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "zod",
-    "env validation"
-  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "scripts": {
-    "build": "bunchee -m",
-    "dev": "bunchee -w --no-clean",
-    "format": "prettier . -w -u --cache"
+    "build": "bunchee --minify --no-sourcemap",
+    "format": "biome format --write",
+    "lint": "biome check",
+    "prepare": "lefthook install",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2",
+    "@types/bun": "^1",
+    "bunchee": "^6",
+    "lefthook": "^2",
+    "picocolors": "^1",
+    "typescript": "^5",
+    "zod": "^4"
   },
   "peerDependencies": {
     "zod": " >=4"
-  },
-  "devDependencies": {
-    "bunchee": "~6.6.0",
-    "picocolors": "~1.1.1",
-    "prettier": "~3.6.2",
-    "prettier-plugin-jsdoc": "~1.3.3",
-    "prettier-plugin-pkg": "~0.21.2",
-    "typescript": "~5.9.3",
-    "zod": "~4.1.12"
   }
 }
