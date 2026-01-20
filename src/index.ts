@@ -2,18 +2,15 @@ import { type ZodError, type ZodObject, type ZodType, z } from "zod";
 
 type ErrorMessage<T extends string> = T;
 type Dictionary<T extends any = any> = Record<string, T>;
-type Simplify<T> = Readonly<{ [P in keyof T]: T[P] } & {}>;
+type Simplify<T> = Readonly<{ readonly [P in keyof T]: T[P] }> & {};
 type Impossible<T extends Dictionary> = Partial<Record<keyof T, never>>;
 type Mutable<T> = T extends Readonly<infer U> ? U : T;
 
-type Reduce<
-  TArr extends Array<Dictionary<unknown>>,
-  TAcc = {},
-> = TArr extends []
-  ? TAcc
-  : TArr extends [infer Head, ...infer Tail]
-    ? Tail extends Array<Dictionary<unknown>>
-      ? Head & Reduce<Tail, TAcc>
+type Reduce<Arr extends Dictionary<unknown>[], Acc = {}> = Arr extends []
+  ? Acc
+  : Arr extends [infer Head, ...infer Tail]
+    ? Tail extends Dictionary<unknown>[]
+      ? Head & Reduce<Tail, Acc>
       : never
     : never;
 
@@ -35,67 +32,51 @@ export interface BaseOptions<
   skip?: boolean;
 }
 
-type StrictEnvType<
-  Prefix extends string | undefined,
-  Server extends Dictionary<ZodType>,
-  Client extends Dictionary<ZodType>,
-  Shared extends Dictionary<ZodType>,
-> = Record<
-  | {
-      [K in keyof Client]: Prefix extends undefined
-        ? never
-        : K extends `${Prefix}${string}`
-          ? K
-          : never;
-    }[keyof Client]
-  | {
-      [K in keyof Server]: Prefix extends undefined
-        ? K
-        : K extends `${Prefix}${string}`
-          ? never
-          : K;
-    }[keyof Server]
-  | {
-      [K in keyof Shared]: K extends string ? K : never;
-    }[keyof Shared],
-  string | boolean | number | undefined
->;
-
-type LooseVarsOptions<
-  Shared extends Dictionary<ZodType>,
-  Extends extends Dictionary<unknown>[],
-> = BaseOptions<Shared, Extends> & {
+export interface LooseOptions<
+  Shared extends Record<string, ZodType>,
+  Extends extends Array<Record<string, unknown>>,
+> extends BaseOptions<Shared, Extends> {
   strict?: false;
-  /** What object holds the environment variables at runtime */
-  vars?: Dictionary<string | boolean | number | undefined>;
-};
+  vars: Record<string, string | boolean | number | undefined>;
+}
 
-type StrictVarsOptions<
+export interface StrictOptions<
   Prefix extends string | undefined,
-  Server extends Dictionary<ZodType>,
-  Client extends Dictionary<ZodType>,
-  Shared extends Dictionary<ZodType>,
-  Extends extends Dictionary<unknown>[],
-> = BaseOptions<Shared, Extends> & {
+  Server extends Record<string, ZodType>,
+  Client extends Record<string, ZodType>,
+  Shared extends Record<string, ZodType>,
+  Extends extends Array<Record<string, unknown>>,
+> extends BaseOptions<Shared, Extends> {
   strict: true;
-  /** Runtime Environment variables to use for validation */
-  vars: StrictEnvType<Prefix, Server, Client, Shared>;
-};
+  vars: Record<
+    | {
+        [K in keyof Client]: Prefix extends undefined
+          ? never
+          : K extends `${Prefix}${string}`
+            ? K
+            : never;
+      }[keyof Client]
+    | {
+        [K in keyof Server]: Prefix extends undefined
+          ? K
+          : K extends `${Prefix}${string}`
+            ? never
+            : K;
+      }[keyof Server]
+    | {
+        [K in keyof Shared]: K extends string ? K : never;
+      }[keyof Shared],
+    string | boolean | number | undefined
+  >;
+}
 
 export interface ClientOptions<
   Prefix extends string | undefined,
   Client extends Dictionary<ZodType>,
 > {
-  /**
-   * The prefix that client-side variables must have. This is enforced both at
-   * a type-level and at runtime.
-   */
+  /** The prefix that client-side variables must have */
   prefix: Prefix;
-
-  /**
-   * Specify your client-side environment variables schema here. This way you can ensure the app isn't
-   * built with invalid env vars.
-   */
+  /** Specify your client-side environment variables schema */
   client: Partial<{
     [K in keyof Client]: K extends `${Prefix}${string}`
       ? Client[K]
@@ -106,23 +87,20 @@ export interface ClientOptions<
 }
 
 export interface ServerOptions<
-  TPrefix extends string | undefined,
-  TServer extends Record<string, ZodType>,
+  Prefix extends string | undefined,
+  Server extends Record<string, ZodType>,
 > {
-  /**
-   * Specify your server-side environment variables schema here. This way you can ensure the app isn't
-   * built with invalid env vars.
-   */
+  /** Specify your server-side environment variables schema */
   server: Partial<{
-    [TKey in keyof TServer]: TPrefix extends undefined
-      ? TServer[TKey]
-      : TPrefix extends ""
-        ? TServer[TKey]
-        : TKey extends `${TPrefix}${string}`
-          ? ErrorMessage<`${TKey extends `${TPrefix}${string}`
-              ? TKey
-              : never} should not prefixed with ${TPrefix}.`>
-          : TServer[TKey];
+    [K in keyof Server]: Prefix extends undefined
+      ? Server[K]
+      : Prefix extends ""
+        ? Server[K]
+        : K extends `${Prefix}${string}`
+          ? ErrorMessage<`${K extends `${Prefix}${string}`
+              ? K
+              : never} should not prefixed with ${Prefix}.`>
+          : Server[K];
   }>;
 }
 
@@ -142,22 +120,10 @@ export type EnvOptions<
   TShared extends Record<string, ZodType>,
   TExtends extends Array<Record<string, unknown>>,
 > =
-  | (LooseVarsOptions<TShared, TExtends> &
+  | (LooseOptions<TShared, TExtends> &
       ServerClientOptions<TPrefix, TServer, TClient>)
-  | (StrictVarsOptions<TPrefix, TServer, TClient, TShared, TExtends> &
+  | (StrictOptions<TPrefix, TServer, TClient, TShared, TExtends> &
       ServerClientOptions<TPrefix, TServer, TClient>);
-
-export type EnvOutput<
-  TServer extends Record<string, ZodType>,
-  TClient extends Record<string, ZodType>,
-  TShared extends Record<string, ZodType>,
-  TExtends extends Array<Record<string, unknown>>,
-> = Simplify<
-  z.infer<ZodObject<TServer>> &
-    z.infer<ZodObject<TClient>> &
-    z.infer<ZodObject<TShared>> &
-    Mutable<Reduce<TExtends>>
->;
 
 const ERRORS = {
   INVALID_ENV: `Invalid environment variables`,
@@ -172,11 +138,16 @@ export function envalid<
   const TExtends extends Array<Record<string, unknown>> = [],
 >(
   opts: EnvOptions<TPrefix, TServer, TClient, TShared, TExtends>,
-): EnvOutput<TServer, TClient, TShared, TExtends> {
+): Simplify<
+  z.output<ZodObject<TServer>> &
+    z.output<ZodObject<TClient>> &
+    z.output<ZodObject<TShared>> &
+    Mutable<Reduce<TExtends>>
+> {
   const runtimeEnv = opts.vars ?? process.env;
 
   for (const [key, value] of Object.entries(runtimeEnv)) {
-    if (value === "") delete runtimeEnv[key];
+    if (value === "") delete runtimeEnv[key as keyof typeof runtimeEnv];
   }
 
   const skip = !!opts.skip;
@@ -190,16 +161,18 @@ export function envalid<
   const shared = z.object(_shared);
   const isServer = opts.isServer ?? typeof window === "undefined";
 
-  const mergedClient = client.extend(shared);
-  const mergedServer = server.extend(shared).extend(client);
+  const allClient = client.extend(shared.shape);
+  const allServer = server.extend(shared.shape).extend(client.shape);
   const parsed = isServer
-    ? mergedServer.safeParse(runtimeEnv) // on server we can validate all env vars
-    : mergedClient.safeParse(runtimeEnv); // on client we can only validate the ones that are exposed
+    ? allServer.safeParse(runtimeEnv) // on server we can validate all env vars
+    : allClient.safeParse(runtimeEnv); // on client we can only validate the ones that are exposed
 
   const onValidationError =
     opts.onError ??
     ((error: ZodError) => {
-      throw new Error(`${ERRORS.INVALID_ENV}: ${error.message}`);
+      const errorVars = error.issues.map((e) => e.path).join(", ");
+      console.error(`Invalid environment variables: ${errorVars}`);
+      throw new Error(`${ERRORS.INVALID_ENV}: ${errorVars}`);
     });
 
   const onInvalidAccess =
@@ -223,12 +196,12 @@ export function envalid<
     return prop === "__esModule" || prop === "$$typeof";
   };
 
-  const extendedObj = (opts.extends ?? []).reduce((acc, curr) => {
+  const presetsEnvSet = (opts.extends ?? []).reduce((acc, curr) => {
     return Object.assign(acc, curr);
   }, {});
-  const fullObj = Object.assign(parsed.data, extendedObj);
+  const completeEnvSet = Object.assign(parsed.data, presetsEnvSet);
 
-  const env = new Proxy(fullObj, {
+  const env = new Proxy(completeEnvSet, {
     get(target, prop) {
       if (typeof prop !== "string") return undefined;
       if (ignoreProp(prop)) return undefined;
@@ -237,6 +210,5 @@ export function envalid<
     },
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: proxy return type is complex
   return env as any;
 }

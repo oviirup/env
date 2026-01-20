@@ -68,6 +68,7 @@ export const neonVercel = () =>
  */
 export const supabaseVercel = () =>
   envalid({
+    prefix: "NEXT_PUBLIC_",
     server: {
       POSTGRES_URL: z.url(),
       POSTGRES_PRISMA_URL: z.url().optional(),

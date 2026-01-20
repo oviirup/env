@@ -1,6 +1,6 @@
 # envalid
 
-Validate environment variables with zod for Next.js and other JavaScript/TypeScript projects.
+Validate environment variables with zod for Next.js or other frameworks.
 
 A tiny helper around zod that makes it easy to validate runtime environment variables and safely expose client-side variables (prefixed with `NEXT_PUBLIC_`). Includes a few presets for common setups (Vercel, Supabase, Neon, Upstash, Vite).
 
@@ -35,6 +35,8 @@ import envalid from "@oviirup/envalid";
 import { z } from "zod";
 
 export const env = envalid({
+  strict: true,
+  prefix: "NEXT_PUBLIC_",
   server: {
     DATABASE_URL: z.string(),
   },
@@ -69,14 +71,9 @@ Options (fields you'll commonly use):
 - `vars` — (optional) the source object to validate (defaults to `process.env`). When `strict` is `true`, provides strict type checking. When `strict` is `false` or omitted, uses loose typing. Useful for Vite or testing where env is in `import.meta.env`.
 - `strict` — (optional) boolean flag. When `true`, `vars` must match the exact keys from your schema. When `false` or omitted, `vars` can contain any keys (defaults to `false`).
 - `isServer` — (optional) boolean override to determine server vs client runtime. By default it detects `typeof window === "undefined"`.
-- `skipValidation` — (optional) if true, validation is skipped and the raw runtime env is returned.
-- `onValidationError` — (optional) callback invoked with the `ZodError` when validation fails. Default logs a readable error and throws.
-- `onInvalidAccess` — (optional) callback invoked when a server-only variable is accessed on the client. Defaults to throwing an error.
-
-Notes:
-
-- Client env keys must start with the `NEXT_PUBLIC_` prefix. Server env keys must not use that prefix.
-- By default, on the client only variables starting with `NEXT_PUBLIC_` (and shared keys) are validated and available; accessing server-only keys on the client triggers `onInvalidAccess`.
+- `skip` — (optional) if true, validation is skipped and the raw runtime env is returned.
+- `onError` — (optional) callback invoked with the `ZodError` when validation fails. Default logs a readable error and throws.
+- `onBreach` — (optional) callback invoked when a server-only variable is accessed on the client. Defaults to throwing an error.
 
 ## Presets
 
@@ -104,26 +101,3 @@ Available presets (current):
 - `vite()` — Vite environment wrapper (uses `import.meta.env`)
 
 Each preset returns the result of calling `envalid(...)` with sensible zod schemas and `vars` set appropriately.
-
-## Next.js / Usage notes
-
-- Put a small `env.ts` or `env.mjs` module in your project that calls `envalid(...)` and exports the resulting object. Import that module where you need typed env values.
-- Keep server-only variables (DB credentials, service role keys) without the `NEXT_PUBLIC_` prefix. Only expose values on the client with the `NEXT_PUBLIC_` prefix.
-
-## Development & Build
-
-This project uses `bunchee` to build the package. Available scripts from `package.json`:
-
-```bash
-npm run build   # bundle for distribution
-npm run dev     # watch mode
-npm run format  # run prettier
-```
-
-## Contributing
-
-Contributions are welcome. Please open issues or PRs if you need additional presets or changes.
-
-## License
-
-MIT
