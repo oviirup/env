@@ -42,7 +42,7 @@ export const env = envalid({
     NEXT_PUBLIC_API_URL: z.string().url().optional(),
   },
   // in next.js you have to pass the environment variables individually
-  runtimeEnv: {
+  vars: {
     DATABASE_URL: process.env.DATABASE_URL,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
@@ -66,7 +66,8 @@ Options (fields you'll commonly use):
 - `client` — an object for client-exposed env vars. Client keys must be prefixed with `NEXT_PUBLIC_`.
 - `shared` — a zod record of variables shared between client and server (no prefix required).
 - `extends` — an array of plain records to extend the returned env object with arbitrary values.
-- `runtimeEnv` — (optional) the source object to validate (defaults to `process.env`). Useful for Vite or testing where env is in `import.meta.env`.
+- `vars` — (optional) the source object to validate (defaults to `process.env`). When `strict` is `true`, provides strict type checking. When `strict` is `false` or omitted, uses loose typing. Useful for Vite or testing where env is in `import.meta.env`.
+- `strict` — (optional) boolean flag. When `true`, `vars` must match the exact keys from your schema. When `false` or omitted, `vars` can contain any keys (defaults to `false`).
 - `isServer` — (optional) boolean override to determine server vs client runtime. By default it detects `typeof window === "undefined"`.
 - `skipValidation` — (optional) if true, validation is skipped and the raw runtime env is returned.
 - `onValidationError` — (optional) callback invoked with the `ZodError` when validation fails. Default logs a readable error and throws.
@@ -102,7 +103,7 @@ Available presets (current):
 - `upstashRedis()` — Upstash Redis
 - `vite()` — Vite environment wrapper (uses `import.meta.env`)
 
-Each preset returns the result of calling `envalid(...)` with sensible zod schemas and `runtimeEnv` set appropriately.
+Each preset returns the result of calling `envalid(...)` with sensible zod schemas and `vars` set appropriately.
 
 ## Next.js / Usage notes
 

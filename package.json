@@ -32,7 +32,6 @@
     "@types/bun": "^1",
     "bunchee": "^6",
     "lefthook": "^2",
-    "picocolors": "^1",
     "typescript": "^5",
     "zod": "^4"
   },

@@ -5,8 +5,7 @@ import { envalid } from "./index";
 
 /**
  * Vercel System Environment Variables
- *
- * @see https://vercel.com/docs/projects/environment-variables/system-environment-variables#system-environment-variables
+ * @see https://vercel.com/docs/projects/environment-variables/system-environment-variables
  */
 export const vercel = () =>
   envalid({
@@ -14,6 +13,7 @@ export const vercel = () =>
       VERCEL: z.string().optional(),
       CI: z.string().optional(),
       VERCEL_ENV: z.enum(["development", "preview", "production"]).optional(),
+      VERCEL_TARGET_ENV: z.string().optional(),
       VERCEL_URL: z.string().optional(),
       VERCEL_PROJECT_PRODUCTION_URL: z.string().optional(),
       VERCEL_BRANCH_URL: z.string().optional(),
@@ -33,14 +33,12 @@ export const vercel = () =>
       VERCEL_GIT_PREVIOUS_SHA: z.string().optional(),
       VERCEL_GIT_PULL_REQUEST_ID: z.string().optional(),
     },
-    // @ts-expect-error unnecessarily cautious
-    runtimeEnv: process.env,
+    vars: process.env,
   });
 
 /**
  * Neon for Vercel Environment Variables
- *
- * @see https://neon.tech/docs/guides/vercel-native-integration#environment-variables-set-by-the-integration
+ * @see https://neon.tech/docs/guides/vercel-native-integration
  */
 export const neonVercel = () =>
   envalid({
@@ -61,13 +59,11 @@ export const neonVercel = () =>
       POSTGRES_URL_NO_SSL: z.url().optional(),
       POSTGRES_PRISMA_URL: z.url().optional(),
     },
-    // @ts-expect-error unnecessarily cautious
-    runtimeEnv: process.env,
+    vars: process.env,
   });
 
 /**
  * Supabase for Vercel Environment Variables
- *
  * @see https://vercel.com/marketplace/supabase
  */
 export const supabaseVercel = () =>
@@ -89,28 +85,24 @@ export const supabaseVercel = () =>
       NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
       NEXT_PUBLIC_SUPABASE_URL: z.url().optional(),
     },
-    // @ts-expect-error unnecessarily cautious
-    runtimeEnv: process.env,
+    vars: process.env,
   });
 
 /**
  * Upstash redis Environment Variables
- *
  * @see https://upstash.com/docs/redis/howto/connectwithupstashredis
  */
 export const upstashRedis = () =>
   envalid({
     server: {
-      UPSTASH_REDIS_REST_URL: z.string().url(),
+      UPSTASH_REDIS_REST_URL: z.url(),
       UPSTASH_REDIS_REST_TOKEN: z.string(),
     },
-    // @ts-expect-error unnecessarily cautious
-    runtimeEnv: process.env,
+    vars: process.env,
   });
 
 /**
  * Vite Environment Variables
- *
  * @see https://vite.dev/guide/env-and-mode
  */
 export const vite = () =>
@@ -122,6 +114,5 @@ export const vite = () =>
       PROD: z.boolean(),
       SSR: z.boolean(),
     },
-    // @ts-expect-error unnecessarily cautious
-    runtimeEnv: import.meta.env,
+    vars: import.meta.env,
   });

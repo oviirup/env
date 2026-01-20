@@ -1,216 +1,211 @@
-import * as pi from "picocolors";
-import { object, z } from "zod";
-import type { ZodError, ZodObject, ZodType } from "zod";
+import { type ZodError, type ZodObject, type ZodType, z } from "zod";
 
-const CLIENT_PREFIX = "NEXT_PUBLIC_" as const;
-
-type TPrefix = typeof CLIENT_PREFIX;
-type TRecord = Record<string, ZodType>;
 type ErrorMessage<T extends string> = T;
-type Simplify<T> = { [P in keyof T]: T[P] } & {};
+type Dictionary<T extends any = any> = Record<string, T>;
+type Simplify<T> = Readonly<{ [P in keyof T]: T[P] } & {}>;
+type Impossible<T extends Dictionary> = Partial<Record<keyof T, never>>;
 type Mutable<T> = T extends Readonly<infer U> ? U : T;
 
-type Impossible<T extends Record<string, any>> = Partial<
-  Record<keyof T, never>
->;
-
 type Reduce<
-  TArr extends Array<Record<string, unknown>>,
+  TArr extends Array<Dictionary<unknown>>,
   TAcc = {},
 > = TArr extends []
   ? TAcc
   : TArr extends [infer Head, ...infer Tail]
-    ? Tail extends Array<Record<string, unknown>>
+    ? Tail extends Array<Dictionary<unknown>>
       ? Head & Reduce<Tail, TAcc>
       : never
     : never;
 
 export interface BaseOptions<
-  TShared extends TRecord,
-  TExtends extends Array<Record<string, unknown>>,
+  Shared extends Record<string, ZodType>,
+  Extends extends Array<Record<string, unknown>>,
+> {
+  /** How to determine whether the app is running on the server or the client */
+  isServer?: boolean;
+  /** Shared variables, available to both client and server */
+  shared?: Shared;
+  /** Extend from presets */
+  extends?: Extends;
+  /** Called when validation fails, by default an error is thrown */
+  onError?: (error: ZodError) => never;
+  /** Called when a server-side environment variable is accessed on the client */
+  onBreach?: (variable: string) => never;
+  /** Whether to skip validation of environment variables */
+  skip?: boolean;
+}
+
+type StrictEnvType<
+  Prefix extends string | undefined,
+  Server extends Dictionary<ZodType>,
+  Client extends Dictionary<ZodType>,
+  Shared extends Dictionary<ZodType>,
+> = Record<
+  | {
+      [K in keyof Client]: Prefix extends undefined
+        ? never
+        : K extends `${Prefix}${string}`
+          ? K
+          : never;
+    }[keyof Client]
+  | {
+      [K in keyof Server]: Prefix extends undefined
+        ? K
+        : K extends `${Prefix}${string}`
+          ? never
+          : K;
+    }[keyof Server]
+  | {
+      [K in keyof Shared]: K extends string ? K : never;
+    }[keyof Shared],
+  string | boolean | number | undefined
+>;
+
+type LooseVarsOptions<
+  Shared extends Dictionary<ZodType>,
+  Extends extends Dictionary<unknown>[],
+> = BaseOptions<Shared, Extends> & {
+  strict?: false;
+  /** What object holds the environment variables at runtime */
+  vars?: Dictionary<string | boolean | number | undefined>;
+};
+
+type StrictVarsOptions<
+  Prefix extends string | undefined,
+  Server extends Dictionary<ZodType>,
+  Client extends Dictionary<ZodType>,
+  Shared extends Dictionary<ZodType>,
+  Extends extends Dictionary<unknown>[],
+> = BaseOptions<Shared, Extends> & {
+  strict: true;
+  /** Runtime Environment variables to use for validation */
+  vars: StrictEnvType<Prefix, Server, Client, Shared>;
+};
+
+export interface ClientOptions<
+  Prefix extends string | undefined,
+  Client extends Dictionary<ZodType>,
 > {
   /**
-   * How to determine whether the app is running on the server or the client.
-   *
-   * @default typeof window === "undefined"
+   * The prefix that client-side variables must have. This is enforced both at
+   * a type-level and at runtime.
    */
-  isServer?: boolean;
+  prefix: Prefix;
 
   /**
-   * Shared variables, often those that are provided by build tools and is
-   * available to both client and server, but isn't prefixed and doesn't require
-   * to be manually supplied. For example `NODE_ENV`, `VERCEL_URL` etc.
-   */
-  shared?: TShared;
-
-  /** Extend presets */
-  extends?: TExtends;
-
-  /**
-   * Called when validation fails. By default the error is logged, and an error
-   * is thrown telling what environment variables are invalid.
-   */
-  onValidationError?: (error: ZodError) => never;
-
-  /**
-   * Called when a server-side environment variable is accessed on the client.
-   * By default an error is thrown.
-   */
-  onInvalidAccess?: (variable: string) => never;
-
-  /**
-   * Whether to skip validation of environment variables.
-   *
-   * @default false
-   */
-  skipValidation?: boolean;
-}
-
-interface StrictOptions<
-  TServer extends TRecord,
-  TClient extends TRecord,
-  TShared extends TRecord,
-  TExtends extends Array<Record<string, unknown>>,
-> extends BaseOptions<TShared, TExtends> {
-  runtimeEnv: Record<
-    | {
-        [TKey in keyof TClient]: TKey extends `${TPrefix}${string}`
-          ? TKey
-          : never;
-      }[keyof TClient]
-    | {
-        [TKey in keyof TServer]: TKey extends `${TPrefix}${string}`
-          ? never
-          : TKey;
-      }[keyof TServer]
-    | {
-        [TKey in keyof TShared]: TKey extends string ? TKey : never;
-      }[keyof TShared],
-    string | boolean | number | undefined
-  >;
-}
-
-export interface ClientOptions<TClient extends TRecord> {
-  /**
-   * Specify your client-side environment variables schema here. This way you
-   * can ensure the app isn't built with invalid env vars.
+   * Specify your client-side environment variables schema here. This way you can ensure the app isn't
+   * built with invalid env vars.
    */
   client: Partial<{
-    [TKey in keyof TClient]: TKey extends `${TPrefix}${string}`
-      ? TClient[TKey]
-      : ErrorMessage<`${TKey extends string ? TKey : never} is not prefixed with ${TPrefix}.`>;
+    [K in keyof Client]: K extends `${Prefix}${string}`
+      ? Client[K]
+      : ErrorMessage<`${K extends string
+          ? K
+          : never} is not prefixed with ${Prefix}.`>;
   }>;
 }
 
-export interface ServerOptions<TServer extends TRecord> {
+export interface ServerOptions<
+  TPrefix extends string | undefined,
+  TServer extends Record<string, ZodType>,
+> {
   /**
-   * Specify your server-side environment variables schema here. This way you
-   * can ensure the app isn't built with invalid env vars.
+   * Specify your server-side environment variables schema here. This way you can ensure the app isn't
+   * built with invalid env vars.
    */
   server: Partial<{
-    [TKey in keyof TServer]: TKey extends `${TPrefix}${string}`
-      ? ErrorMessage<`${TKey extends `${TPrefix}${string}` ? TKey : never} should not prefixed with ${TPrefix}.`>
-      : TServer[TKey];
+    [TKey in keyof TServer]: TPrefix extends undefined
+      ? TServer[TKey]
+      : TPrefix extends ""
+        ? TServer[TKey]
+        : TKey extends `${TPrefix}${string}`
+          ? ErrorMessage<`${TKey extends `${TPrefix}${string}`
+              ? TKey
+              : never} should not prefixed with ${TPrefix}.`>
+          : TServer[TKey];
   }>;
 }
 
 export type ServerClientOptions<
-  TServer extends TRecord,
-  TClient extends TRecord,
+  TPrefix extends string | undefined,
+  TServer extends Record<string, ZodType>,
+  TClient extends Record<string, ZodType>,
 > =
-  | (ClientOptions<TClient> & ServerOptions<TServer>)
-  | (ServerOptions<TServer> & Impossible<ClientOptions<never>>)
-  | (ClientOptions<TClient> & Impossible<ServerOptions<never>>);
+  | (ClientOptions<TPrefix, TClient> & ServerOptions<TPrefix, TServer>)
+  | (ServerOptions<TPrefix, TServer> & Impossible<ClientOptions<never, never>>)
+  | (ClientOptions<TPrefix, TClient> & Impossible<ServerOptions<never, never>>);
 
 export type EnvOptions<
-  TServer extends TRecord,
-  TClient extends TRecord,
-  TShared extends TRecord,
+  TPrefix extends string | undefined,
+  TServer extends Record<string, ZodType>,
+  TClient extends Record<string, ZodType>,
+  TShared extends Record<string, ZodType>,
   TExtends extends Array<Record<string, unknown>>,
-> = StrictOptions<TServer, TClient, TShared, TExtends> &
-  ServerClientOptions<TServer, TClient>;
+> =
+  | (LooseVarsOptions<TShared, TExtends> &
+      ServerClientOptions<TPrefix, TServer, TClient>)
+  | (StrictVarsOptions<TPrefix, TServer, TClient, TShared, TExtends> &
+      ServerClientOptions<TPrefix, TServer, TClient>);
 
-type TServerFormat = TRecord;
-type TClientFormat = TRecord;
-type TSharedFormat = TRecord;
-type TExtendsFormat = Array<Record<string, unknown>>;
-
-export type CreateEnv<
-  TServer extends TServerFormat,
-  TClient extends TClientFormat,
-  TShared extends TSharedFormat,
-  TExtends extends TExtendsFormat,
-> = Readonly<
-  Simplify<
-    z.output<ZodObject<TServer>> &
-      z.output<ZodObject<TClient>> &
-      z.output<ZodObject<TShared>> &
-      Mutable<Reduce<TExtends>>
-  >
+export type EnvOutput<
+  TServer extends Record<string, ZodType>,
+  TClient extends Record<string, ZodType>,
+  TShared extends Record<string, ZodType>,
+  TExtends extends Array<Record<string, unknown>>,
+> = Simplify<
+  z.infer<ZodObject<TServer>> &
+    z.infer<ZodObject<TClient>> &
+    z.infer<ZodObject<TShared>> &
+    Mutable<Reduce<TExtends>>
 >;
 
-function displayError(error: ZodError) {
-  console.error(`${pi.red("\u00D7")} Invalid environment variables:`);
-  const errorList = error.issues;
-  const errorCount = errorList.length;
-  errorList.forEach((err, i) => {
-    const key = err.path[0].toString();
-    const message = err.message || "Invalid value";
-    const prefix = i === errorCount - 1 ? "└──" : "├──";
-    console.error(`${prefix} ${key}: ${message}`);
-  });
-}
+const ERRORS = {
+  INVALID_ENV: `Invalid environment variables`,
+  INVALID_ACCESS: `Attempted to access a server-side environment variable on the client`,
+};
 
 export function envalid<
-  TServer extends TServerFormat = NonNullable<unknown>,
-  TClient extends TClientFormat = NonNullable<unknown>,
-  TShared extends TSharedFormat = NonNullable<unknown>,
-  const TExtends extends TExtendsFormat = [],
+  TPrefix extends string | undefined,
+  TServer extends Record<string, ZodType> = NonNullable<unknown>,
+  TClient extends Record<string, ZodType> = NonNullable<unknown>,
+  TShared extends Record<string, ZodType> = NonNullable<unknown>,
+  const TExtends extends Array<Record<string, unknown>> = [],
 >(
-  opts: EnvOptions<TServer, TClient, TShared, TExtends>,
-): CreateEnv<TServer, TClient, TShared, TExtends> {
-  const runtimeEnv = opts.runtimeEnv ?? process.env;
+  opts: EnvOptions<TPrefix, TServer, TClient, TShared, TExtends>,
+): EnvOutput<TServer, TClient, TShared, TExtends> {
+  const runtimeEnv = opts.vars ?? process.env;
 
-  // remove empty strings from runtime env
   for (const [key, value] of Object.entries(runtimeEnv)) {
-    if (value && value === "") {
-      // @ts-expect-error unnecessarily cautious
-      delete runtimeEnv[key];
-    }
+    if (value === "") delete runtimeEnv[key];
   }
 
-  const skip = !!opts.skipValidation;
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  const skip = !!opts.skip;
   if (skip) return runtimeEnv as any;
 
   const _client = typeof opts.client === "object" ? opts.client : {};
   const _server = typeof opts.server === "object" ? opts.server : {};
   const _shared = typeof opts.shared === "object" ? opts.shared : {};
-  const client = object(_client);
-  const server = object(_server);
-  const shared = object(_shared);
-  const isServer =
-    opts.isServer ?? (typeof window === "undefined" || "Deno" in window);
+  const client = z.object(_client);
+  const server = z.object(_server);
+  const shared = z.object(_shared);
+  const isServer = opts.isServer ?? typeof window === "undefined";
 
-  const allClient = client.extend(shared.shape);
-  const allServer = server.extend(shared.shape).extend(client.shape);
+  const mergedClient = client.extend(shared);
+  const mergedServer = server.extend(shared).extend(client);
   const parsed = isServer
-    ? allServer.safeParse(runtimeEnv) // on server we can validate all env vars
-    : allClient.safeParse(runtimeEnv); // on client we can only validate the ones that are exposed
+    ? mergedServer.safeParse(runtimeEnv) // on server we can validate all env vars
+    : mergedClient.safeParse(runtimeEnv); // on client we can only validate the ones that are exposed
 
   const onValidationError =
-    opts.onValidationError ??
+    opts.onError ??
     ((error: ZodError) => {
-      displayError(error);
-      throw new Error("Invalid environment variables");
+      throw new Error(`${ERRORS.INVALID_ENV}: ${error.message}`);
     });
 
   const onInvalidAccess =
-    opts.onInvalidAccess ??
-    ((_variable: string) => {
-      throw new Error(
-        "❌ Attempted to access a server-side environment variable on the client",
-      );
+    opts.onBreach ??
+    ((variable: string) => {
+      throw new Error(`${ERRORS.INVALID_ACCESS}: ${variable}`);
     });
 
   if (parsed.success === false) {
@@ -218,7 +213,8 @@ export function envalid<
   }
 
   const isServerAccess = (prop: string) => {
-    return !prop.startsWith(CLIENT_PREFIX) && !(prop in shared.shape);
+    if (!opts.prefix) return true;
+    return !prop.startsWith(opts.prefix) && !(prop in shared.shape);
   };
   const isValidServerAccess = (prop: string) => {
     return isServer || !isServerAccess(prop);
@@ -241,5 +237,6 @@ export function envalid<
     },
   });
 
+  // biome-ignore lint/suspicious/noExplicitAny: proxy return type is complex
   return env as any;
 }
