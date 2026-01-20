@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, expectTypeOf, spyOn, test } from "bun:test";
 import { z } from "zod";
 import { envalid } from "../src";
 
@@ -13,11 +13,8 @@ describe("envalid", () => {
     ignoreErrors(() => {
       envalid({
         prefix: "FOO_",
-        server: {
-          // @ts-expect-error - server should not have FOO_ prefix
-          FOO_BAR: z.string(),
-          BAR: z.string(),
-        },
+        // @ts-expect-error - server should not have FOO_ prefix
+        server: { FOO_BAR: z.string(), BAR: z.string() },
         client: {},
       });
     });
@@ -28,11 +25,8 @@ describe("envalid", () => {
       envalid({
         prefix: "FOO_",
         server: {},
-        client: {
-          FOO_BAR: z.string(),
-          // @ts-expect-error - no FOO_ prefix
-          BAR: z.string(),
-        },
+        // @ts-expect-error - no FOO_ prefix
+        client: { FOO_BAR: z.string(), BAR: z.string() },
       });
     });
   });
@@ -48,6 +42,7 @@ describe("envalid", () => {
       prefix: "FOO_",
       server: {},
       client: { FOO_BAR: z.string() },
+      strict: true,
       vars: { FOO_BAR: "foo" },
     });
     envalid({
@@ -66,13 +61,17 @@ describe("envalid", () => {
       prefix: "FOO_",
       server: {},
       client: { FOO_BAR: z.string() },
+      strict: true,
+      // @ts-expect-error - FOO_BAZ is extraneous
       vars: { FOO_BAR: "foo", FOO_BAZ: "baz" },
     });
     ignoreErrors(() => {
+      // @ts-expect-error - BAR is missing
       envalid({
         prefix: "FOO_",
         server: { BAR: z.string() },
         client: { FOO_BAR: z.string() },
+        strict: true,
         vars: { FOO_BAR: "foo" },
       });
     });
@@ -81,17 +80,54 @@ describe("envalid", () => {
   test("can pass number and booleans", () => {
     const env = envalid({
       prefix: "FOO_",
-      server: {
-        PORT: z.number(),
-        IS_DEV: z.boolean(),
-      },
+      server: { PORT: z.number(), IS_DEV: z.boolean() },
       client: {},
+      strict: true,
       vars: { PORT: 123, IS_DEV: true },
     });
+    expectTypeOf(env).toEqualTypeOf<
+      Readonly<{ PORT: number; IS_DEV: boolean }>
+    >();
+    expect(env).toMatchObject({ PORT: 123, IS_DEV: true });
+  });
 
-    expect(env).toMatchObject({
-      PORT: 123,
-      IS_DEV: true,
+  describe("return type is correctly inferred", () => {
+    test("simple", () => {
+      const env = envalid({
+        prefix: "FOO_",
+        server: { BAR: z.string() },
+        client: { FOO_BAR: z.string() },
+        strict: true,
+        vars: { BAR: "bar", FOO_BAR: "foo" },
+      });
+      expectTypeOf(env).toEqualTypeOf<
+        Readonly<{ BAR: string; FOO_BAR: string }>
+      >();
+      expect(env).toMatchObject({ BAR: "bar", FOO_BAR: "foo" });
+    });
+    test("with transforms", () => {
+      const env = envalid({
+        prefix: "FOO_",
+        server: { BAR: z.string().transform(Number) },
+        client: { FOO_BAR: z.string() },
+        strict: true,
+        vars: { BAR: "123", FOO_BAR: "foo" },
+      });
+      expectTypeOf(env).toEqualTypeOf<
+        Readonly<{ BAR: number; FOO_BAR: string }>
+      >();
+      expect(env).toMatchObject({ BAR: 123, FOO_BAR: "foo" });
+    });
+    test("without client vars", () => {
+      const env = envalid({
+        prefix: "FOO_",
+        server: { BAR: z.string() },
+        client: {},
+        strict: true,
+        vars: { BAR: "bar" },
+      });
+      expectTypeOf(env).toEqualTypeOf<Readonly<{ BAR: string }>>();
+      expect(env).toMatchObject({ BAR: "bar" });
     });
   });
 });

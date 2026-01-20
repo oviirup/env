@@ -2,9 +2,13 @@ import { type ZodError, type ZodObject, type ZodType, z } from "zod";
 
 type ErrorMessage<T extends string> = T;
 type Dictionary<T extends any = any> = Record<string, T>;
-type Simplify<T> = Readonly<{ readonly [P in keyof T]: T[P] }> & {};
 type Impossible<T extends Dictionary> = Partial<Record<keyof T, never>>;
 type Mutable<T> = T extends Readonly<infer U> ? U : T;
+type Key<Prefix extends string | undefined> = `${Prefix}${string}`;
+
+type Simplify<T> = {
+  readonly [P in keyof T as string extends P ? never : P]: T[P];
+};
 
 type Reduce<Arr extends Dictionary<unknown>[], Acc = {}> = Arr extends []
   ? Acc
@@ -15,8 +19,8 @@ type Reduce<Arr extends Dictionary<unknown>[], Acc = {}> = Arr extends []
     : never;
 
 export interface BaseOptions<
-  Shared extends Record<string, ZodType>,
-  Extends extends Array<Record<string, unknown>>,
+  Shared extends Dictionary<ZodType>,
+  Extends extends Dictionary<unknown>[],
 > {
   /** How to determine whether the app is running on the server or the client */
   isServer?: boolean;
@@ -33,33 +37,33 @@ export interface BaseOptions<
 }
 
 export interface LooseOptions<
-  Shared extends Record<string, ZodType>,
-  Extends extends Array<Record<string, unknown>>,
+  Shared extends Dictionary<ZodType>,
+  Extends extends Dictionary<unknown>[],
 > extends BaseOptions<Shared, Extends> {
   strict?: false;
-  vars: Record<string, string | boolean | number | undefined>;
+  vars: Dictionary<string | boolean | number | undefined>;
 }
 
 export interface StrictOptions<
   Prefix extends string | undefined,
   Server extends Record<string, ZodType>,
-  Client extends Record<string, ZodType>,
+  Client extends Record<Key<Prefix>, ZodType>,
   Shared extends Record<string, ZodType>,
-  Extends extends Array<Record<string, unknown>>,
+  Extends extends Record<string, unknown>[],
 > extends BaseOptions<Shared, Extends> {
   strict: true;
   vars: Record<
     | {
         [K in keyof Client]: Prefix extends undefined
           ? never
-          : K extends `${Prefix}${string}`
+          : K extends Key<Prefix>
             ? K
             : never;
       }[keyof Client]
     | {
         [K in keyof Server]: Prefix extends undefined
           ? K
-          : K extends `${Prefix}${string}`
+          : K extends Key<Prefix>
             ? never
             : K;
       }[keyof Server]
@@ -72,17 +76,15 @@ export interface StrictOptions<
 
 export interface ClientOptions<
   Prefix extends string | undefined,
-  Client extends Dictionary<ZodType>,
+  Client extends Record<Key<Prefix>, ZodType>,
 > {
   /** The prefix that client-side variables must have */
   prefix: Prefix;
   /** Specify your client-side environment variables schema */
   client: Partial<{
-    [K in keyof Client]: K extends `${Prefix}${string}`
+    [K in keyof Client]: K extends Key<Prefix>
       ? Client[K]
-      : ErrorMessage<`${K extends string
-          ? K
-          : never} is not prefixed with ${Prefix}.`>;
+      : ErrorMessage<`${K extends string ? K : never} is not prefixed with ${Prefix}.`>;
   }>;
 }
 
@@ -96,34 +98,32 @@ export interface ServerOptions<
       ? Server[K]
       : Prefix extends ""
         ? Server[K]
-        : K extends `${Prefix}${string}`
-          ? ErrorMessage<`${K extends `${Prefix}${string}`
-              ? K
-              : never} should not prefixed with ${Prefix}.`>
+        : K extends Key<Prefix>
+          ? ErrorMessage<`${K extends Key<Prefix> ? K : never} should not prefixed with ${Prefix}.`>
           : Server[K];
   }>;
 }
 
 export type ServerClientOptions<
-  TPrefix extends string | undefined,
-  TServer extends Record<string, ZodType>,
-  TClient extends Record<string, ZodType>,
+  Prefix extends string | undefined,
+  Server extends Record<string, ZodType>,
+  Client extends Record<Key<Prefix>, ZodType>,
 > =
-  | (ClientOptions<TPrefix, TClient> & ServerOptions<TPrefix, TServer>)
-  | (ServerOptions<TPrefix, TServer> & Impossible<ClientOptions<never, never>>)
-  | (ClientOptions<TPrefix, TClient> & Impossible<ServerOptions<never, never>>);
+  | (ClientOptions<Prefix, Client> & ServerOptions<Prefix, Server>)
+  | (ServerOptions<Prefix, Server> & Impossible<ClientOptions<never, never>>)
+  | (ClientOptions<Prefix, Client> & Impossible<ServerOptions<never, never>>);
 
 export type EnvOptions<
-  TPrefix extends string | undefined,
-  TServer extends Record<string, ZodType>,
-  TClient extends Record<string, ZodType>,
-  TShared extends Record<string, ZodType>,
-  TExtends extends Array<Record<string, unknown>>,
+  Prefix extends string | undefined,
+  Server extends Record<string, ZodType>,
+  Client extends Record<Key<Prefix>, ZodType>,
+  Shared extends Record<string, ZodType>,
+  Extends extends Array<Record<string, unknown>>,
 > =
-  | (LooseOptions<TShared, TExtends> &
-      ServerClientOptions<TPrefix, TServer, TClient>)
-  | (StrictOptions<TPrefix, TServer, TClient, TShared, TExtends> &
-      ServerClientOptions<TPrefix, TServer, TClient>);
+  | (LooseOptions<Shared, Extends> &
+      ServerClientOptions<Prefix, Server, Client>)
+  | (StrictOptions<Prefix, Server, Client, Shared, Extends> &
+      ServerClientOptions<Prefix, Server, Client>);
 
 const ERRORS = {
   INVALID_ENV: `Invalid environment variables`,
@@ -131,18 +131,18 @@ const ERRORS = {
 };
 
 export function envalid<
-  TPrefix extends string | undefined,
-  TServer extends Record<string, ZodType> = NonNullable<unknown>,
-  TClient extends Record<string, ZodType> = NonNullable<unknown>,
-  TShared extends Record<string, ZodType> = NonNullable<unknown>,
-  const TExtends extends Array<Record<string, unknown>> = [],
+  Prefix extends string | undefined,
+  Server extends Record<string, ZodType> = NonNullable<unknown>,
+  Client extends Record<string, ZodType> = NonNullable<unknown>,
+  Shared extends Record<string, ZodType> = NonNullable<unknown>,
+  const Extends extends Record<string, unknown>[] = [],
 >(
-  opts: EnvOptions<TPrefix, TServer, TClient, TShared, TExtends>,
+  opts: EnvOptions<Prefix, Server, Client, Shared, Extends>,
 ): Simplify<
-  z.output<ZodObject<TServer>> &
-    z.output<ZodObject<TClient>> &
-    z.output<ZodObject<TShared>> &
-    Mutable<Reduce<TExtends>>
+  z.output<ZodObject<Server>> &
+    z.output<ZodObject<Client>> &
+    z.output<ZodObject<Shared>> &
+    Mutable<Reduce<Extends>>
 > {
   const runtimeEnv = opts.vars ?? process.env;
 
