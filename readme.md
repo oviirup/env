@@ -1,4 +1,4 @@
-# envalid
+# @oviirup/env ![](https://img.shields.io/badge/WIP-gold)
 
 Validate environment variables with zod for Next.js or other frameworks.
 
@@ -17,13 +17,13 @@ This package has a peer dependency on `zod` (>= 4). Install both:
 
 ```bash
 # npm
-npm install @oviirup/envalid zod
+npm install @oviirup/env zod
 
 # or yarn
-yarn add @oviirup/envalid zod
+yarn add @oviirup/env zod
 
 # or pnpm
-pnpm add @oviirup/envalid zod
+pnpm add @oviirup/env zod
 ```
 
 ## Quick Start
@@ -31,10 +31,10 @@ pnpm add @oviirup/envalid zod
 Create a small module that validates your environment and exports the typed env object.
 
 ```ts
-import envalid from "@oviirup/envalid";
+import { createEnv } from "@oviirup/env";
 import { z } from "zod";
 
-export const env = envalid({
+export const env = createEnv({
   strict: true,
   prefix: "NEXT_PUBLIC_",
   server: {
@@ -58,7 +58,7 @@ export const env = envalid({
 
 ## API
 
-### envalid(options)
+### createEnv(options)
 
 Returns: a readonly object containing the parsed and validated environment variables (the return type is inferred from your zod schemas).
 
@@ -86,7 +86,7 @@ import {
   neonVercel,
   upstashRedis,
   vite,
-} from "@oviirup/envalid/presets";
+} from "@oviirup/env/presets";
 
 // Example:
 export const env = vercel();
@@ -100,4 +100,4 @@ Available presets (current):
 - `upstashRedis()` — Upstash Redis
 - `vite()` — Vite environment wrapper (uses `import.meta.env`)
 
-Each preset returns the result of calling `envalid(...)` with sensible zod schemas and `vars` set appropriately.
+Each preset returns the result of calling `createEnv(...)` with sensible zod schemas and `vars` set appropriately.

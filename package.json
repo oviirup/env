@@ -1,8 +1,8 @@
 {
-  "name": "@oviirup/envalid",
-  "version": "0.2.1",
+  "name": "@oviirup/env",
+  "version": "1.0.0",
   "description": "Validate environment variables with zod in Next.JS",
-  "repository": "https://github.com/oviirup/envalid",
+  "repository": "https://github.com/oviirup/env",
   "license": "MIT",
   "author": "Avirup Ghosh (github.com/oviirup)",
   "exports": {

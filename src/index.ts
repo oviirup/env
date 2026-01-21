@@ -1,4 +1,5 @@
-import { type ZodError, type ZodObject, type ZodType, z } from "zod";
+import type { ZodError, ZodObject, ZodType } from "zod";
+import { z } from "zod";
 
 type ErrorMessage<T extends string> = T;
 type Dictionary<T extends any = any> = Record<string, T>;
@@ -18,132 +19,136 @@ type Reduce<Arr extends Dictionary<unknown>[], Acc = {}> = Arr extends []
       : never
     : never;
 
-export interface BaseOptions<
-  Shared extends Dictionary<ZodType>,
-  Extends extends Dictionary<unknown>[],
-> {
+export type BaseOptions<
+  G extends Record<string, ZodType>,
+  E extends Record<string, unknown>[],
+> = {
   /** How to determine whether the app is running on the server or the client */
   isServer?: boolean;
   /** Shared variables, available to both client and server */
-  shared?: Shared;
+  shared?: G;
   /** Extend from presets */
-  extends?: Extends;
+  extends?: E;
   /** Called when validation fails, by default an error is thrown */
   onError?: (error: ZodError) => never;
   /** Called when a server-side environment variable is accessed on the client */
   onBreach?: (variable: string) => never;
   /** Whether to skip validation of environment variables */
   skip?: boolean;
-}
+};
 
-export interface LooseOptions<
-  Shared extends Dictionary<ZodType>,
-  Extends extends Dictionary<unknown>[],
-> extends BaseOptions<Shared, Extends> {
+export type LooseOptions<
+  G extends Record<string, ZodType>,
+  E extends Record<string, unknown>[],
+> = BaseOptions<G, E> & {
   strict?: false;
   vars: Dictionary<string | boolean | number | undefined>;
-}
+};
 
-export interface StrictOptions<
-  Prefix extends string | undefined,
-  Server extends Record<string, ZodType>,
-  Client extends Record<Key<Prefix>, ZodType>,
-  Shared extends Record<string, ZodType>,
-  Extends extends Record<string, unknown>[],
-> extends BaseOptions<Shared, Extends> {
+export type StrictOptions<
+  P extends string | undefined,
+  S extends Record<string, ZodType>,
+  C extends Record<Key<P>, ZodType>,
+  G extends Record<string, ZodType>,
+  E extends Record<string, unknown>[],
+> = BaseOptions<G, E> & {
   strict: true;
   vars: Record<
     | {
-        [K in keyof Client]: Prefix extends undefined
+        [CK in keyof C]: P extends undefined
           ? never
-          : K extends Key<Prefix>
-            ? K
+          : CK extends Key<P>
+            ? CK
             : never;
-      }[keyof Client]
+      }[keyof C]
     | {
-        [K in keyof Server]: Prefix extends undefined
-          ? K
-          : K extends Key<Prefix>
+        [SK in keyof S]: P extends undefined
+          ? SK
+          : SK extends Key<P>
             ? never
-            : K;
-      }[keyof Server]
+            : SK;
+      }[keyof S]
     | {
-        [K in keyof Shared]: K extends string ? K : never;
-      }[keyof Shared],
+        [K in keyof G]: K extends string ? K : never;
+      }[keyof G],
     string | boolean | number | undefined
   >;
-}
+};
 
-export interface ClientOptions<
-  Prefix extends string | undefined,
-  Client extends Record<Key<Prefix>, ZodType>,
-> {
+export type ClientOptions<
+  P extends string | undefined,
+  C extends Record<Key<P>, ZodType>,
+> = {
   /** The prefix that client-side variables must have */
-  prefix: Prefix;
+  prefix: P;
   /** Specify your client-side environment variables schema */
   client: Partial<{
-    [K in keyof Client]: K extends Key<Prefix>
-      ? Client[K]
-      : ErrorMessage<`${K extends string ? K : never} is not prefixed with ${Prefix}.`>;
+    [K in keyof C]: K extends Key<P>
+      ? C[K]
+      : ErrorMessage<`${K extends string ? K : never} is not prefixed with ${P}.`>;
   }>;
-}
+};
 
-export interface ServerOptions<
-  Prefix extends string | undefined,
-  Server extends Record<string, ZodType>,
-> {
+export type ServerOptions<
+  P extends string | undefined,
+  S extends Record<string, ZodType>,
+> = {
   /** Specify your server-side environment variables schema */
   server: Partial<{
-    [K in keyof Server]: Prefix extends undefined
-      ? Server[K]
-      : Prefix extends ""
-        ? Server[K]
-        : K extends Key<Prefix>
-          ? ErrorMessage<`${K extends Key<Prefix> ? K : never} should not prefixed with ${Prefix}.`>
-          : Server[K];
+    [K in keyof S]: P extends undefined
+      ? S[K]
+      : P extends ""
+        ? S[K]
+        : K extends Key<P>
+          ? ErrorMessage<`${K extends Key<P> ? K : never} should not prefixed with ${P}.`>
+          : S[K];
   }>;
-}
+};
 
 export type ServerClientOptions<
-  Prefix extends string | undefined,
-  Server extends Record<string, ZodType>,
-  Client extends Record<Key<Prefix>, ZodType>,
+  P extends string | undefined,
+  S extends Record<string, ZodType>,
+  C extends Record<Key<P>, ZodType>,
 > =
-  | (ClientOptions<Prefix, Client> & ServerOptions<Prefix, Server>)
-  | (ServerOptions<Prefix, Server> & Impossible<ClientOptions<never, never>>)
-  | (ClientOptions<Prefix, Client> & Impossible<ServerOptions<never, never>>);
+  | (ClientOptions<P, C> & ServerOptions<P, S>)
+  | (ServerOptions<P, S> & Impossible<ClientOptions<never, never>>)
+  | (ClientOptions<P, C> & Impossible<ServerOptions<never, never>>);
 
 export type EnvOptions<
-  Prefix extends string | undefined,
-  Server extends Record<string, ZodType>,
-  Client extends Record<Key<Prefix>, ZodType>,
-  Shared extends Record<string, ZodType>,
-  Extends extends Array<Record<string, unknown>>,
+  P extends string | undefined,
+  S extends Record<string, ZodType>,
+  C extends Record<Key<P>, ZodType>,
+  G extends Record<string, ZodType>,
+  E extends Array<Record<string, unknown>>,
 > =
-  | (LooseOptions<Shared, Extends> &
-      ServerClientOptions<Prefix, Server, Client>)
-  | (StrictOptions<Prefix, Server, Client, Shared, Extends> &
-      ServerClientOptions<Prefix, Server, Client>);
+  | (LooseOptions<G, E> & ServerClientOptions<P, S, C>)
+  | (StrictOptions<P, S, C, G, E> & ServerClientOptions<P, S, C>);
+
+export type EnvOutput<
+  P extends string | undefined,
+  S extends Record<string, ZodType>,
+  C extends Record<Key<P>, ZodType>,
+  G extends Record<string, ZodType>,
+  E extends Array<Record<string, unknown>>,
+> = Simplify<
+  z.output<ZodObject<S>> &
+    z.output<ZodObject<C>> &
+    z.output<ZodObject<G>> &
+    Mutable<Reduce<E>>
+>;
 
 const ERRORS = {
   INVALID_ENV: `Invalid environment variables`,
   INVALID_ACCESS: `Attempted to access a server-side environment variable on the client`,
 };
 
-export function envalid<
-  Prefix extends string | undefined,
-  Server extends Record<string, ZodType> = NonNullable<unknown>,
-  Client extends Record<string, ZodType> = NonNullable<unknown>,
-  Shared extends Record<string, ZodType> = NonNullable<unknown>,
-  const Extends extends Record<string, unknown>[] = [],
->(
-  opts: EnvOptions<Prefix, Server, Client, Shared, Extends>,
-): Simplify<
-  z.output<ZodObject<Server>> &
-    z.output<ZodObject<Client>> &
-    z.output<ZodObject<Shared>> &
-    Mutable<Reduce<Extends>>
-> {
+export function createEnv<
+  P extends string | undefined,
+  S extends Record<string, ZodType> = NonNullable<unknown>,
+  C extends Record<string, ZodType> = NonNullable<unknown>,
+  G extends Record<string, ZodType> = NonNullable<unknown>,
+  E extends Record<string, unknown>[] = [],
+>(opts: EnvOptions<P, S, C, G, E>): EnvOutput<P, S, C, G, E> {
   const runtimeEnv = opts.vars ?? process.env;
 
   for (const [key, value] of Object.entries(runtimeEnv)) {

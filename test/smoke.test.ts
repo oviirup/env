@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, spyOn, test } from "bun:test";
 import { z } from "zod";
-import { envalid } from "../src";
+import { createEnv } from "../src";
 
 function ignoreErrors(cb: () => void) {
   try {
@@ -8,10 +8,10 @@ function ignoreErrors(cb: () => void) {
   } catch (err) {}
 }
 
-describe("envalid", () => {
+describe("env", () => {
   test("server vars should not be prefixed", () => {
     ignoreErrors(() => {
-      envalid({
+      createEnv({
         prefix: "FOO_",
         // @ts-expect-error - server should not have FOO_ prefix
         server: { FOO_BAR: z.string(), BAR: z.string() },
@@ -22,7 +22,7 @@ describe("envalid", () => {
 
   test("client vars should be correctly prefixed", () => {
     ignoreErrors(() => {
-      envalid({
+      createEnv({
         prefix: "FOO_",
         server: {},
         // @ts-expect-error - no FOO_ prefix
@@ -32,32 +32,32 @@ describe("envalid", () => {
   });
 
   test("runtimeEnvStrict enforces all keys", () => {
-    envalid({
+    createEnv({
       prefix: "FOO_",
       server: {},
       client: {},
       vars: {},
     });
-    envalid({
+    createEnv({
       prefix: "FOO_",
       server: {},
       client: { FOO_BAR: z.string() },
       strict: true,
       vars: { FOO_BAR: "foo" },
     });
-    envalid({
+    createEnv({
       prefix: "FOO_",
       server: { BAR: z.string() },
       client: {},
       vars: { BAR: "foo" },
     });
-    envalid({
+    createEnv({
       prefix: "FOO_",
       server: { BAR: z.string() },
       client: { FOO_BAR: z.string() },
       vars: { BAR: "foo", FOO_BAR: "foo" },
     });
-    envalid({
+    createEnv({
       prefix: "FOO_",
       server: {},
       client: { FOO_BAR: z.string() },
@@ -67,7 +67,7 @@ describe("envalid", () => {
     });
     ignoreErrors(() => {
       // @ts-expect-error - BAR is missing
-      envalid({
+      createEnv({
         prefix: "FOO_",
         server: { BAR: z.string() },
         client: { FOO_BAR: z.string() },
@@ -78,7 +78,7 @@ describe("envalid", () => {
   });
 
   test("can pass number and booleans", () => {
-    const env = envalid({
+    const env = createEnv({
       prefix: "FOO_",
       server: { PORT: z.number(), IS_DEV: z.boolean() },
       client: {},
@@ -93,7 +93,7 @@ describe("envalid", () => {
 
   describe("return type is correctly inferred", () => {
     test("simple", () => {
-      const env = envalid({
+      const env = createEnv({
         prefix: "FOO_",
         server: { BAR: z.string() },
         client: { FOO_BAR: z.string() },
@@ -106,7 +106,7 @@ describe("envalid", () => {
       expect(env).toMatchObject({ BAR: "bar", FOO_BAR: "foo" });
     });
     test("with transforms", () => {
-      const env = envalid({
+      const env = createEnv({
         prefix: "FOO_",
         server: { BAR: z.string().transform(Number) },
         client: { FOO_BAR: z.string() },
@@ -119,7 +119,7 @@ describe("envalid", () => {
       expect(env).toMatchObject({ BAR: 123, FOO_BAR: "foo" });
     });
     test("without client vars", () => {
-      const env = envalid({
+      const env = createEnv({
         prefix: "FOO_",
         server: { BAR: z.string() },
         client: {},

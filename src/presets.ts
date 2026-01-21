@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { envalid } from "./index";
+import { createEnv } from "./index";
 
 // cspell:disable
 
@@ -8,7 +8,7 @@ import { envalid } from "./index";
  * @see https://vercel.com/docs/projects/environment-variables/system-environment-variables
  */
 export const vercel = () =>
-  envalid({
+  createEnv({
     server: {
       VERCEL: z.string().optional(),
       CI: z.string().optional(),
@@ -41,7 +41,7 @@ export const vercel = () =>
  * @see https://neon.tech/docs/guides/vercel-native-integration
  */
 export const neonVercel = () =>
-  envalid({
+  createEnv({
     server: {
       DATABASE_URL: z.string(),
       DATABASE_URL_UNPOOLED: z.string().optional(),
@@ -67,7 +67,7 @@ export const neonVercel = () =>
  * @see https://vercel.com/marketplace/supabase
  */
 export const supabaseVercel = () =>
-  envalid({
+  createEnv({
     prefix: "NEXT_PUBLIC_",
     server: {
       POSTGRES_URL: z.url(),
@@ -94,7 +94,7 @@ export const supabaseVercel = () =>
  * @see https://upstash.com/docs/redis/howto/connectwithupstashredis
  */
 export const upstashRedis = () =>
-  envalid({
+  createEnv({
     server: {
       UPSTASH_REDIS_REST_URL: z.url(),
       UPSTASH_REDIS_REST_TOKEN: z.string(),
@@ -107,7 +107,7 @@ export const upstashRedis = () =>
  * @see https://vite.dev/guide/env-and-mode
  */
 export const vite = () =>
-  envalid({
+  createEnv({
     server: {
       BASE_URL: z.string(),
       MODE: z.string(),
