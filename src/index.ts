@@ -9,7 +9,7 @@ type Key<Prefix extends string | undefined> = `${Prefix}${string}`;
 
 type Simplify<T> = {
   readonly [P in keyof T as string extends P ? never : P]: T[P];
-};
+} & {};
 
 type Reduce<Arr extends Dictionary<unknown>[], Acc = {}> = Arr extends []
   ? Acc
@@ -119,7 +119,7 @@ export type EnvOptions<
   S extends Record<string, ZodType>,
   C extends Record<Key<P>, ZodType>,
   G extends Record<string, ZodType>,
-  E extends Array<Record<string, unknown>>,
+  E extends Record<string, unknown>[],
 > =
   | (LooseOptions<G, E> & ServerClientOptions<P, S, C>)
   | (StrictOptions<P, S, C, G, E> & ServerClientOptions<P, S, C>);
@@ -129,7 +129,7 @@ export type EnvOutput<
   S extends Record<string, ZodType>,
   C extends Record<Key<P>, ZodType>,
   G extends Record<string, ZodType>,
-  E extends Array<Record<string, unknown>>,
+  E extends Record<string, unknown>[],
 > = Simplify<
   z.output<ZodObject<S>> &
     z.output<ZodObject<C>> &
@@ -147,7 +147,7 @@ export function createEnv<
   S extends Record<string, ZodType> = NonNullable<unknown>,
   C extends Record<string, ZodType> = NonNullable<unknown>,
   G extends Record<string, ZodType> = NonNullable<unknown>,
-  E extends Record<string, unknown>[] = [],
+  const E extends Record<string, unknown>[] = [],
 >(opts: EnvOptions<P, S, C, G, E>): EnvOutput<P, S, C, G, E> {
   const runtimeEnv = opts.vars ?? process.env;
 
