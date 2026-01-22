@@ -1,6 +1,6 @@
 {
   "name": "@oviirup/env",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Validate environment variables with zod in Next.JS",
   "repository": "https://github.com/oviirup/env",
   "license": "MIT",
@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "import": "./dist/next.mjs",
+      "require": "./dist/next.js"
     },
     "./presets": {
       "types": "./dist/presets.d.ts",
